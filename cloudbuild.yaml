@@ -1,0 +1,49 @@
+substitutions:
+  _SERVICE_NAME: frontend-staging
+  _SUPABASE_URL_SECRET: SUPABASE_URL_STAGING
+  _SUPABASE_ANON_KEY_SECRET: SUPABASE_ANON_KEY_STAGING
+  _SUPABASE_SVC_KEY_SECRET: SUPABASE_SERVICE_ROLE_KEY_STAGING
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/todo-gcp-498308/secrets/$_SUPABASE_URL_SECRET/versions/latest
+      env: NEXT_PUBLIC_SUPABASE_URL
+    - versionName: projects/todo-gcp-498308/secrets/$_SUPABASE_ANON_KEY_SECRET/versions/latest
+      env: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    - versionName: projects/todo-gcp-498308/secrets/$_SUPABASE_SVC_KEY_SECRET/versions/latest
+      env: SUPABASE_SERVICE_ROLE_KEY
+
+steps:
+  # Build: NEXT_PUBLIC_* vars baked into the image at build time (Next.js requires this)
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        docker build \
+          --build-arg NEXT_PUBLIC_SUPABASE_URL=$$NEXT_PUBLIC_SUPABASE_URL \
+          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+          -t us-central1-docker.pkg.dev/todo-gcp-498308/todo-app/frontend:$SHORT_SHA \
+          .
+    secretEnv: [NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY]
+
+  # Deploy to Cloud Run (creates service on first run)
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - $_SERVICE_NAME
+      - --image=us-central1-docker.pkg.dev/todo-gcp-498308/todo-app/frontend:$SHORT_SHA
+      - --region=us-central1
+      - --platform=managed
+      - --allow-unauthenticated
+      - --service-account=cloud-run-sa@todo-gcp-498308.iam.gserviceaccount.com
+      - --set-secrets=SUPABASE_SERVICE_ROLE_KEY=$_SUPABASE_SVC_KEY_SECRET:latest
+      - --project=todo-gcp-498308
+
+images:
+  - us-central1-docker.pkg.dev/todo-gcp-498308/todo-app/frontend:$SHORT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY
