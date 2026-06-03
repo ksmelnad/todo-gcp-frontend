@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import json
 import os
+import sys
 import time
 
 
@@ -34,7 +35,7 @@ def generate(secret: str) -> None:
     anon = make_jwt({"role": "anon", "iss": "supabase", "iat": now, "exp": exp}, secret)
     svc = make_jwt({"role": "service_role", "iss": "supabase", "iat": now, "exp": exp}, secret)
 
-    print("# Copy these values into your .env file on the Supabase VM")
+    print("# Copy these values into your .env file on the Supabase VM", file=sys.stderr)
     print(f"JWT_SECRET={secret}")
     print(f"ANON_KEY={anon}")
     print(f"SERVICE_ROLE_KEY={svc}")
