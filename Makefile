@@ -194,6 +194,10 @@ studio-prod:
 # ─────────────────────────────────────────────
 
 gcp-connect-github:
+	@echo "==> Granting Cloud Build P4SA Secret Manager permissions..."
+	gcloud projects add-iam-policy-binding $(GCP_PROJECT) \
+	  --member="serviceAccount:service-$$(gcloud projects describe $(GCP_PROJECT) --format='value(projectNumber)')@gcp-sa-cloudbuild.iam.gserviceaccount.com" \
+	  --role="roles/secretmanager.admin" --quiet
 	@echo "==> Creating Cloud Build GitHub connection..."
 	@echo "    You will be prompted to authorize GitHub access in your browser."
 	gcloud builds connections create github github-connection \
