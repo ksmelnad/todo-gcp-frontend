@@ -46,5 +46,7 @@ if __name__ == "__main__":
     parser.add_argument("--secret", help="Use existing JWT secret instead of generating new one")
     args = parser.parse_args()
 
-    secret = args.secret or base64.b64encode(os.urandom(32)).decode().rstrip("=")
+    secret = args.secret or base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")
+    if len(secret) < 32:
+        sys.exit("Error: JWT_SECRET must be at least 32 characters")
     generate(secret)
