@@ -10,8 +10,6 @@ availableSecrets:
       env: NEXT_PUBLIC_SUPABASE_URL
     - versionName: projects/todo-gcp-498308/secrets/$_SUPABASE_ANON_KEY_SECRET/versions/latest
       env: NEXT_PUBLIC_SUPABASE_ANON_KEY
-    - versionName: projects/todo-gcp-498308/secrets/$_SUPABASE_SVC_KEY_SECRET/versions/latest
-      env: SUPABASE_SERVICE_ROLE_KEY
 
 steps:
   # Build: NEXT_PUBLIC_* vars baked into the image at build time (Next.js requires this)
