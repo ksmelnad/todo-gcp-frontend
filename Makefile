@@ -121,6 +121,12 @@ gcp-service-accounts:
 	gcloud projects add-iam-policy-binding $(GCP_PROJECT) \
 	  --member="serviceAccount:cloud-run-sa@$(GCP_PROJECT).iam.gserviceaccount.com" \
 	  --role="roles/secretmanager.secretAccessor"
+	gcloud projects add-iam-policy-binding $(GCP_PROJECT) \
+	  --member="serviceAccount:cloud-build-sa@$(GCP_PROJECT).iam.gserviceaccount.com" \
+	  --role="roles/cloudbuild.builds.builder"
+	gcloud projects add-iam-policy-binding $(GCP_PROJECT) \
+	  --member="serviceAccount:cloud-build-sa@$(GCP_PROJECT).iam.gserviceaccount.com" \
+	  --role="roles/logging.logWriter"
 
 gcp-artifact-registry:
 	gcloud artifacts repositories create todo-app \
