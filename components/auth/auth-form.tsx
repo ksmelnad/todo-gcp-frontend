@@ -27,6 +27,7 @@ export function AuthForm() {
     } else {
       router.push('/board')
       router.refresh()
+      return
     }
     setLoading(false)
   }
