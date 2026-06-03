@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -28,7 +28,8 @@ interface EisenhowerBoardProps {
 }
 
 export function EisenhowerBoard({ initialTodos }: EisenhowerBoardProps) {
-  const supabase = createClient()
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
   const [todos, setTodos] = useState<Todo[]>(initialTodos)
   const [activeId, setActiveId] = useState<string | null>(null)
 
@@ -41,16 +42,34 @@ export function EisenhowerBoard({ initialTodos }: EisenhowerBoardProps) {
 
   const handleAdd = useCallback(
     async (title: string, quadrant: QuadrantType) => {
+      const tempId = `temp-${Date.now()}`
+      const optimisticTodo: Todo = {
+        id: tempId,
+        user_id: '',
+        title,
+        quadrant,
+        completed: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      setTodos((prev) => [...prev, optimisticTodo])
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+
       const { data, error } = await supabase
         .from('todos')
         .insert({ title, quadrant, user_id: user.id })
         .select()
         .single()
-      if (!error && data) {
-        setTodos((prev) => [...prev, data as Todo])
+
+      if (error) {
+        setTodos((prev) => prev.filter((t) => t.id !== tempId))
+        return
       }
+      setTodos((prev) =>
+        prev.map((t) => (t.id === tempId ? (data as Todo) : t))
+      )
     },
     [supabase]
   )
