@@ -25,10 +25,28 @@ migrate:
 	pnpm supabase migration up
 
 migrate-staging:
-	pnpm supabase db push --db-url "$(DATABASE_URL_STAGING)"
+	@echo "==> Applying migrations to staging via docker exec..."
+	@for f in $$(ls supabase/migrations/*.sql | sort); do \
+	  echo "  Applying $$f"; \
+	  gcloud compute scp "$$f" supabase-staging:~/mig.sql \
+	    --project=$(GCP_PROJECT) --zone=$(GCP_REGION)-a --quiet; \
+	  gcloud compute ssh supabase-staging \
+	    --project=$(GCP_PROJECT) --zone=$(GCP_REGION)-a \
+	    --command="sudo docker exec -i supabase-db psql -U postgres postgres < ~/mig.sql; rm -f ~/mig.sql" || true; \
+	done
+	@echo "==> Staging migration done."
 
 migrate-prod:
-	pnpm supabase db push --db-url "$(DATABASE_URL_PROD)"
+	@echo "==> Applying migrations to prod via docker exec..."
+	@for f in $$(ls supabase/migrations/*.sql | sort); do \
+	  echo "  Applying $$f"; \
+	  gcloud compute scp "$$f" supabase-prod:~/mig.sql \
+	    --project=$(GCP_PROJECT) --zone=$(GCP_REGION)-a --quiet; \
+	  gcloud compute ssh supabase-prod \
+	    --project=$(GCP_PROJECT) --zone=$(GCP_REGION)-a \
+	    --command="sudo docker exec -i supabase-db psql -U postgres postgres < ~/mig.sql; rm -f ~/mig.sql" || true; \
+	done
+	@echo "==> Prod migration done."
 
 logs-staging:
 	gcloud run services logs read frontend-staging --project $(GCP_PROJECT) --region $(GCP_REGION) --limit 50
