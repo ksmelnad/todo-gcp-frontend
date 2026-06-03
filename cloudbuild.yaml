@@ -13,8 +13,10 @@ availableSecrets:
 
 steps:
   # Build: NEXT_PUBLIC_* vars baked into the image at build time (Next.js requires this)
+  # DOCKER_BUILDKIT=1 required for --mount=type=cache in Dockerfile
   - name: gcr.io/cloud-builders/docker
     entrypoint: bash
+    env: [DOCKER_BUILDKIT=1]
     args:
       - -c
       - |
@@ -24,6 +26,10 @@ steps:
           -t us-central1-docker.pkg.dev/todo-gcp-498308/todo-app/frontend:$SHORT_SHA \
           .
     secretEnv: [NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY]
+
+  # Push image before deploy (images: field pushes after all steps — too late for gcloud run deploy)
+  - name: gcr.io/cloud-builders/docker
+    args: [push, us-central1-docker.pkg.dev/todo-gcp-498308/todo-app/frontend:$SHORT_SHA]
 
   # Deploy to Cloud Run (creates service on first run)
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -39,9 +45,6 @@ steps:
       - --service-account=cloud-run-sa@todo-gcp-498308.iam.gserviceaccount.com
       - --set-secrets=SUPABASE_SERVICE_ROLE_KEY=$_SUPABASE_SVC_KEY_SECRET:latest
       - --project=todo-gcp-498308
-
-images:
-  - us-central1-docker.pkg.dev/todo-gcp-498308/todo-app/frontend:$SHORT_SHA
 
 options:
   logging: CLOUD_LOGGING_ONLY
