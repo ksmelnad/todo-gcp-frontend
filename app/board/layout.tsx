@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 
 async function signOut() {
   'use server'
-  const { createClient } = await import('@/lib/supabase/server')
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')
