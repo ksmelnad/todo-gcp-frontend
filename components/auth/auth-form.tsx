@@ -36,9 +36,13 @@ export function AuthForm() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) {
       setError(error.message)
+    } else if (data.session) {
+      router.push('/board')
+      router.refresh()
+      return
     } else {
       setError('Check your email for a confirmation link.')
     }
