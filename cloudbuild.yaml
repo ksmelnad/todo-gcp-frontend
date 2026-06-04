@@ -1,19 +1,19 @@
 substitutions:
   _SERVICE_NAME: frontend-staging
+  _FRONTEND_URL: https://frontend-staging-sitwaunxna-uc.a.run.app
   _SUPABASE_URL_SECRET: SUPABASE_URL_STAGING
   _SUPABASE_ANON_KEY_SECRET: SUPABASE_ANON_KEY_STAGING
   _SUPABASE_SVC_KEY_SECRET: SUPABASE_SERVICE_ROLE_KEY_STAGING
 
 availableSecrets:
   secretManager:
-    - versionName: projects/todo-gcp-498308/secrets/$_SUPABASE_URL_SECRET/versions/latest
-      env: NEXT_PUBLIC_SUPABASE_URL
     - versionName: projects/todo-gcp-498308/secrets/$_SUPABASE_ANON_KEY_SECRET/versions/latest
       env: NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 steps:
-  # Build: NEXT_PUBLIC_* vars baked into the image at build time (Next.js requires this)
-  # DOCKER_BUILDKIT=1 required for --mount=type=cache in Dockerfile
+  # NEXT_PUBLIC_SUPABASE_URL is set to the proxy path so the browser calls the same-origin
+  # HTTPS URL instead of the VM's HTTP URL (which would be blocked as mixed content).
+  # SUPABASE_URL (server-only, the VM's HTTP URL) is injected at runtime via Cloud Run secrets.
   - name: gcr.io/cloud-builders/docker
     entrypoint: bash
     env: [DOCKER_BUILDKIT=1]
@@ -21,17 +21,15 @@ steps:
       - -c
       - |
         docker build \
-          --build-arg NEXT_PUBLIC_SUPABASE_URL=$$NEXT_PUBLIC_SUPABASE_URL \
+          --build-arg NEXT_PUBLIC_SUPABASE_URL=$_FRONTEND_URL/api/supabase \
           --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$$NEXT_PUBLIC_SUPABASE_ANON_KEY \
           -t us-central1-docker.pkg.dev/todo-gcp-498308/todo-app/frontend:$SHORT_SHA \
           .
-    secretEnv: [NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY]
+    secretEnv: [NEXT_PUBLIC_SUPABASE_ANON_KEY]
 
-  # Push image before deploy (images: field pushes after all steps — too late for gcloud run deploy)
   - name: gcr.io/cloud-builders/docker
     args: [push, us-central1-docker.pkg.dev/todo-gcp-498308/todo-app/frontend:$SHORT_SHA]
 
-  # Deploy to Cloud Run (creates service on first run)
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -43,7 +41,7 @@ steps:
       - --platform=managed
       - --allow-unauthenticated
       - --service-account=cloud-run-sa@todo-gcp-498308.iam.gserviceaccount.com
-      - --set-secrets=SUPABASE_SERVICE_ROLE_KEY=$_SUPABASE_SVC_KEY_SECRET:latest
+      - --set-secrets=SUPABASE_URL=$_SUPABASE_URL_SECRET:latest,SUPABASE_SERVICE_ROLE_KEY=$_SUPABASE_SVC_KEY_SECRET:latest
       - --project=todo-gcp-498308
 
 options:

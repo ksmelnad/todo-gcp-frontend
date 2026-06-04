@@ -225,7 +225,7 @@ gcp-build-triggers:
 	  --repository=projects/$(GCP_PROJECT)/locations/$(GCP_REGION)/connections/github-connection/repositories/todo-gcp-frontend \
 	  --branch-pattern='^dev$$' \
 	  --build-config=cloudbuild.yaml \
-	  --substitutions=_SERVICE_NAME=frontend-staging,_SUPABASE_URL_SECRET=SUPABASE_URL_STAGING,_SUPABASE_ANON_KEY_SECRET=SUPABASE_ANON_KEY_STAGING,_SUPABASE_SVC_KEY_SECRET=SUPABASE_SERVICE_ROLE_KEY_STAGING \
+	  --substitutions=_SERVICE_NAME=frontend-staging,_FRONTEND_URL=https://frontend-staging-sitwaunxna-uc.a.run.app,_SUPABASE_URL_SECRET=SUPABASE_URL_STAGING,_SUPABASE_ANON_KEY_SECRET=SUPABASE_ANON_KEY_STAGING,_SUPABASE_SVC_KEY_SECRET=SUPABASE_SERVICE_ROLE_KEY_STAGING \
 	  --service-account=projects/$(GCP_PROJECT)/serviceAccounts/cloud-build-sa@$(GCP_PROJECT).iam.gserviceaccount.com \
 	  --project=$(GCP_PROJECT) 2>/dev/null || true
 	gcloud builds triggers create github \
@@ -234,7 +234,7 @@ gcp-build-triggers:
 	  --repository=projects/$(GCP_PROJECT)/locations/$(GCP_REGION)/connections/github-connection/repositories/todo-gcp-frontend \
 	  --branch-pattern='^main$$' \
 	  --build-config=cloudbuild.yaml \
-	  --substitutions=_SERVICE_NAME=frontend-prod,_SUPABASE_URL_SECRET=SUPABASE_URL_PROD,_SUPABASE_ANON_KEY_SECRET=SUPABASE_ANON_KEY_PROD,_SUPABASE_SVC_KEY_SECRET=SUPABASE_SERVICE_ROLE_KEY_PROD \
+	  --substitutions=_SERVICE_NAME=frontend-prod,_FRONTEND_URL=https://frontend-prod-sitwaunxna-uc.a.run.app,_SUPABASE_URL_SECRET=SUPABASE_URL_PROD,_SUPABASE_ANON_KEY_SECRET=SUPABASE_ANON_KEY_PROD,_SUPABASE_SVC_KEY_SECRET=SUPABASE_SERVICE_ROLE_KEY_PROD \
 	  --service-account=projects/$(GCP_PROJECT)/serviceAccounts/cloud-build-sa@$(GCP_PROJECT).iam.gserviceaccount.com \
 	  --project=$(GCP_PROJECT) 2>/dev/null || true
 	gcloud builds triggers create github \
