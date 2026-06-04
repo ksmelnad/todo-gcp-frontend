@@ -1,6 +1,5 @@
 substitutions:
   _SERVICE_NAME: frontend-staging
-  _FRONTEND_URL: https://frontend-staging-sitwaunxna-uc.a.run.app
   _SUPABASE_URL_SECRET: SUPABASE_URL_STAGING
   _SUPABASE_ANON_KEY_SECRET: SUPABASE_ANON_KEY_STAGING
   _SUPABASE_SVC_KEY_SECRET: SUPABASE_SERVICE_ROLE_KEY_STAGING
@@ -11,9 +10,8 @@ availableSecrets:
       env: NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 steps:
-  # NEXT_PUBLIC_SUPABASE_URL is set to the proxy path so the browser calls the same-origin
-  # HTTPS URL instead of the VM's HTTP URL (which would be blocked as mixed content).
-  # SUPABASE_URL (server-only, the VM's HTTP URL) is injected at runtime via Cloud Run secrets.
+  # NEXT_PUBLIC_SUPABASE_URL is NOT baked here. The browser client derives it
+  # from window.location.origin at runtime, so it works on any deployment URL.
   - name: gcr.io/cloud-builders/docker
     entrypoint: bash
     env: [DOCKER_BUILDKIT=1]
@@ -21,7 +19,6 @@ steps:
       - -c
       - |
         docker build \
-          --build-arg NEXT_PUBLIC_SUPABASE_URL=$_FRONTEND_URL/api/supabase \
           --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$$NEXT_PUBLIC_SUPABASE_ANON_KEY \
           -t us-central1-docker.pkg.dev/todo-gcp-498308/todo-app/frontend:$SHORT_SHA \
           .
