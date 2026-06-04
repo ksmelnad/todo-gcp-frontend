@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -11,7 +11,7 @@ import {
   useSensors,
   closestCenter,
 } from '@dnd-kit/core'
-import { createClient } from '@/lib/supabase/client'
+import { addTodo, completeTodo, moveTodo, removeTodo } from '@/app/board/actions'
 import { Quadrant } from './quadrant'
 import { TodoCard } from './todo-card'
 import { type Todo, type Quadrant as QuadrantType } from '@/lib/types'
@@ -28,8 +28,6 @@ interface EisenhowerBoardProps {
 }
 
 export function EisenhowerBoard({ initialTodos }: EisenhowerBoardProps) {
-  const supabaseRef = useRef(createClient())
-  const supabase = supabaseRef.current
   const [todos, setTodos] = useState<Todo[]>(initialTodos)
   const [activeId, setActiveId] = useState<string | null>(null)
 
@@ -40,67 +38,37 @@ export function EisenhowerBoard({ initialTodos }: EisenhowerBoardProps) {
   const activeTodo = todos.find((t) => t.id === activeId)
   const todosFor = (q: QuadrantType) => todos.filter((t) => t.quadrant === q)
 
-  const handleAdd = useCallback(
-    async (title: string, quadrant: QuadrantType) => {
-      const tempId = `temp-${Date.now()}`
-      const optimisticTodo: Todo = {
-        id: tempId,
-        user_id: '',
-        title,
-        quadrant,
-        completed: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-      setTodos((prev) => [...prev, optimisticTodo])
+  const handleAdd = useCallback(async (title: string, quadrant: QuadrantType) => {
+    const tempId = `temp-${Date.now()}`
+    const optimistic: Todo = {
+      id: tempId, user_id: '', title, quadrant,
+      completed: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    setTodos((prev) => [...prev, optimistic])
+    try {
+      const data = await addTodo(title, quadrant)
+      setTodos((prev) => prev.map((t) => (t.id === tempId ? (data as Todo) : t)))
+    } catch {
+      setTodos((prev) => prev.filter((t) => t.id !== tempId))
+    }
+  }, [])
 
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+  const handleComplete = useCallback(async (id: string, completed: boolean) => {
+    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, completed } : t)))
+    await completeTodo(id, completed)
+  }, [])
 
-      const { data, error } = await supabase
-        .from('todos')
-        .insert({ title, quadrant, user_id: user.id })
-        .select()
-        .single()
+  const handleDelete = useCallback(async (id: string) => {
+    setTodos((prev) => prev.filter((t) => t.id !== id))
+    await removeTodo(id)
+  }, [])
 
-      if (error) {
-        setTodos((prev) => prev.filter((t) => t.id !== tempId))
-        return
-      }
-      setTodos((prev) =>
-        prev.map((t) => (t.id === tempId ? (data as Todo) : t))
-      )
-    },
-    [supabase]
-  )
-
-  const handleComplete = useCallback(
-    async (id: string, completed: boolean) => {
-      setTodos((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, completed } : t))
-      )
-      await supabase.from('todos').update({ completed }).eq('id', id)
-    },
-    [supabase]
-  )
-
-  const handleDelete = useCallback(
-    async (id: string) => {
-      setTodos((prev) => prev.filter((t) => t.id !== id))
-      await supabase.from('todos').delete().eq('id', id)
-    },
-    [supabase]
-  )
-
-  const handleMove = useCallback(
-    async (id: string, quadrant: QuadrantType) => {
-      setTodos((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, quadrant } : t))
-      )
-      await supabase.from('todos').update({ quadrant }).eq('id', id)
-    },
-    [supabase]
-  )
+  const handleMove = useCallback(async (id: string, quadrant: QuadrantType) => {
+    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, quadrant } : t)))
+    await moveTodo(id, quadrant)
+  }, [])
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(event.active.id as string)
@@ -110,25 +78,17 @@ export function EisenhowerBoard({ initialTodos }: EisenhowerBoardProps) {
     setActiveId(null)
     const { active, over } = event
     if (!over) return
-
     const activeId = active.id as string
     const overId = over.id as string
-
     const activeTodo = todos.find((t) => t.id === activeId)
     if (!activeTodo) return
-
     if (QUADRANTS.includes(overId as QuadrantType)) {
       const targetQuadrant = overId as QuadrantType
-      if (activeTodo.quadrant !== targetQuadrant) {
-        handleMove(activeId, targetQuadrant)
-      }
+      if (activeTodo.quadrant !== targetQuadrant) handleMove(activeId, targetQuadrant)
       return
     }
-
     const overTodo = todos.find((t) => t.id === overId)
-    if (!overTodo) return
-
-    if (activeTodo.quadrant !== overTodo.quadrant) {
+    if (overTodo && activeTodo.quadrant !== overTodo.quadrant) {
       handleMove(activeId, overTodo.quadrant)
     }
   }
@@ -153,15 +113,9 @@ export function EisenhowerBoard({ initialTodos }: EisenhowerBoardProps) {
           />
         ))}
       </div>
-
       <DragOverlay>
         {activeTodo ? (
-          <TodoCard
-            todo={activeTodo}
-            onComplete={() => {}}
-            onDelete={() => {}}
-            onMove={() => {}}
-          />
+          <TodoCard todo={activeTodo} onComplete={() => {}} onDelete={() => {}} onMove={() => {}} />
         ) : null}
       </DragOverlay>
     </DndContext>
